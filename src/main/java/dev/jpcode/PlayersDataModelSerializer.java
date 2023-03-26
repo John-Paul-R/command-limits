@@ -26,17 +26,17 @@ public class PlayersDataModelSerializer {
 
         Map<UUID, CommandLimitsPlayerModel> players = new HashMap<>();
         json.get("players").getAsJsonObject()
-                .entrySet()
-                .forEach((playerEntry) -> {
-                    var playerData = new CommandLimitsPlayerModel();
-                    playerEntry.getValue().getAsJsonObject()
-                            .get("commandExecutions").getAsJsonObject()
-                            .entrySet()
-                            .forEach(commandEntry -> playerData.setCommandExecutions(commandEntry.getKey(), commandEntry.getValue().getAsInt()));
-                    players.put(
-                            UUID.fromString(playerEntry.getKey()),
-                            playerData);
-                });
+            .entrySet()
+            .forEach((playerEntry) -> {
+                var playerData = new CommandLimitsPlayerModel();
+                playerEntry.getValue().getAsJsonObject()
+                    .get("commandExecutions").getAsJsonObject()
+                    .entrySet()
+                    .forEach(commandEntry -> playerData.setCommandExecutions(commandEntry.getKey(), commandEntry.getValue().getAsInt()));
+                players.put(
+                    UUID.fromString(playerEntry.getKey()),
+                    playerData);
+            });
 
         playersData.setPlayers(players);
 

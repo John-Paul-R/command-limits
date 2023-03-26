@@ -1,12 +1,19 @@
 package dev.jpcode;
 
+import com.google.gson.JsonNull;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
 
 import java.util.HashMap;
 
 public class ConfigSerializer {
     public void toJson(JsonObject json, CommandLimitsConfig object) {
         json.addProperty("rootCommandName", object.getRootCommandName());
+
+        var feedbackTemplate = object.getCommandLimitFeedbackTemplate();
+        json.add(
+            "commandLimitFeedbackTemplate",
+            feedbackTemplate.isEmpty() ? JsonNull.INSTANCE : new JsonPrimitive(feedbackTemplate.get()));
 
         var commandsObj = new JsonObject();
         object.getCommands().forEach((key, value) -> {
@@ -26,6 +33,16 @@ public class ConfigSerializer {
         config.setRootCommandName(rootCommandElem == null || rootCommandElem.isJsonNull()
             ? null
             : rootCommandElem.getAsString());
+
+        var feedbackTemplate = json.get("commandLimitFeedbackTemplate");
+        if (feedbackTemplate == null) {
+            config.setCommandLimitFeedbackTemplateToDefault();
+        } else {
+            config.setCommandLimitFeedbackTemplate(feedbackTemplate.isJsonNull()
+                ? null
+                : feedbackTemplate.getAsString());
+        }
+
 
         var commands = new HashMap<String, CommandLimitsModel>();
         json.getAsJsonObject("commands")

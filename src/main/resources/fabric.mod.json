@@ -16,7 +16,7 @@
 	"environment": "*",
 	"entrypoints": {
 		"main": [
-			"dev.jpcode.ExampleMod"
+          "dev.jpcode.CommandLimitsMod"
 		]
 	},
 	"mixins": [

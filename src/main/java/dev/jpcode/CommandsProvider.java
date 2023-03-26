@@ -9,10 +9,9 @@ import com.google.gson.stream.JsonWriter;
 import com.mojang.brigadier.Command;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.context.CommandContext;
+import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.brigadier.tree.CommandNode;
-import com.mojang.brigadier.tree.LiteralCommandNode;
 import net.fabricmc.loader.api.FabricLoader;
-import net.minecraft.command.CommandRegistryAccess;
 import net.minecraft.server.command.ServerCommandSource;
 
 import java.io.*;
@@ -23,8 +22,7 @@ import java.util.stream.Collectors;
 public class CommandsProvider {
 
     public void registerCommandLimitsCommands(
-            CommandDispatcher<ServerCommandSource> dispatcher,
-            CommandRegistryAccess registryAccess) {
+            CommandDispatcher<ServerCommandSource> dispatcher) {
 
     }
 
@@ -37,7 +35,7 @@ public class CommandsProvider {
     private Field commandNodeCommandField;
     private Field commandNodeRequirementField;
 
-    private static CommandLimitsPlayerModel getPlayerData(ServerCommandSource serverCommandSource) {
+    private static CommandLimitsPlayerModel getPlayerData(ServerCommandSource serverCommandSource) throws CommandSyntaxException {
         var playerUuid = serverCommandSource.getPlayer().getUuid();
         var data = PLAYERS_DATA.getPlayers().get(playerUuid);
         if (data == null) {
@@ -47,8 +45,7 @@ public class CommandsProvider {
     }
 
     public void reregisterCommands(
-            CommandDispatcher<ServerCommandSource> dispatcher,
-            CommandRegistryAccess registryAccess) throws IOException {
+            CommandDispatcher<ServerCommandSource> dispatcher) throws IOException {
 
         var commands = dispatcher.getRoot().getChildren();
 
@@ -128,10 +125,19 @@ public class CommandsProvider {
             if (!existingRequirement.test(serverCommandSource)) {
                 return false;
             }
-            if (!serverCommandSource.isExecutedByPlayer()) {
-                return true;
+            try {
+                if (serverCommandSource.getPlayer() == null) {
+                    return true;
+                }
+            } catch (CommandSyntaxException e) {
+                throw new RuntimeException(e);
             }
-            var playerData = getPlayerData(serverCommandSource);
+            CommandLimitsPlayerModel playerData = null;
+            try {
+                playerData = getPlayerData(serverCommandSource);
+            } catch (CommandSyntaxException e) {
+                throw new RuntimeException(e);
+            }
             int executionCount = playerData == null ? 0 : playerData.getCommandExecutions(rootCommandName);
             return executionCount < commandConfig.getMaxExecutions();
         };
@@ -140,7 +146,7 @@ public class CommandsProvider {
     private Command<ServerCommandSource> createWrappedCommand(String rootCommandName, CommandNode<ServerCommandSource> commandNode) {
         var baseCommand = commandNode.getCommand();
         return (CommandContext<ServerCommandSource> ctx) -> {
-            if (ctx.getSource().isExecutedByPlayer()) {
+            if (ctx.getSource() != null) {
                 getPlayerData(ctx.getSource()).incrementExecutions(rootCommandName);
             }
             return baseCommand.run(ctx);

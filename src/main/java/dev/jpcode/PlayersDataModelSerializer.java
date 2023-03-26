@@ -30,6 +30,7 @@ public class PlayersDataModelSerializer {
                 .forEach((playerEntry) -> {
                     var playerData = new CommandLimitsPlayerModel();
                     playerEntry.getValue().getAsJsonObject()
+                            .get("commandExecutions").getAsJsonObject()
                             .entrySet()
                             .forEach(commandEntry -> playerData.setCommandExecutions(commandEntry.getKey(), commandEntry.getValue().getAsInt()));
                     players.put(

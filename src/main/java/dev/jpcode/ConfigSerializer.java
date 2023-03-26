@@ -24,15 +24,15 @@ public class ConfigSerializer {
 
         var rootCommandElem = json.get("rootCommandName");
         config.setRootCommandName(rootCommandElem == null || rootCommandElem.isJsonNull()
-                ? null
-                : rootCommandElem.getAsString());
+            ? null
+            : rootCommandElem.getAsString());
 
         var commands = new HashMap<String, CommandLimitsModel>();
         json.getAsJsonObject("commands")
-                .entrySet()
-                .forEach(cmdEntry -> commands.put(
-                        cmdEntry.getKey(),
-                        new CommandLimitsModel(cmdEntry.getValue().getAsJsonObject().get("maxExecutions").getAsInt())));
+            .entrySet()
+            .forEach(cmdEntry -> commands.put(
+                cmdEntry.getKey(),
+                new CommandLimitsModel(cmdEntry.getValue().getAsJsonObject().get("maxExecutions").getAsInt())));
 
         config.setCommands(commands);
 

@@ -36,80 +36,80 @@ import java.util.stream.Collectors;
 public class CommandsProvider {
 
     public void registerCommandLimitsCommands(
-            CommandDispatcher<ServerCommandSource> dispatcher) {
+        CommandDispatcher<ServerCommandSource> dispatcher) {
 
         var commandNames = getCommandNames(dispatcher);
 
         var rootCommandName = CONFIG.getRootCommandName();
 
         var clBuilder = CommandManager.literal(rootCommandName)
-                .then(CommandManager.literal("reload")
-                        .requires(Permissions.require("commandlimits.reload", 3))
+            .then(CommandManager.literal("reload")
+                .requires(Permissions.require("commandlimits.reload", 3))
+                .executes(ctx -> {
+                    try {
+                        loadOrInitConfig(dispatcher);
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                    return 0;
+                })
+            )
+            .then(CommandManager.literal("player")
+                .then(CommandManager.argument("target_player", EntityArgumentType.player())
+                    .then(CommandManager.literal("info")
+                        .requires(Permissions.require("commandlimits.player.info", 2))
                         .executes(ctx -> {
-                            try {
-                                loadOrInitConfig(dispatcher);
-                            } catch (IOException e) {
-                                throw new RuntimeException(e);
-                            }
+                            var targetPlayer = EntityArgumentType.getPlayer(ctx, "target_player");
+
+                            var titleBase = Text.of("Command Limits info for ");
+                            var targetPlayerName = targetPlayer.getDisplayName();
+
+                            var playerData = getPlayerData(targetPlayer);
+
+                            var titleText = new LiteralText("")
+                                .append(titleBase)
+                                .append(targetPlayerName)
+                                .append("\n");
+
+                            var finalText = new LiteralText("")
+                                .append(titleText);
+
+                            playerData.getCommandExecutionsMap().forEach((key, value) -> {
+                                finalText.append(new LiteralText("")
+                                    .append(new LiteralText(key))
+                                    .append(new LiteralText(": "))
+                                    .append(new LiteralText("(Execution Count: "))
+                                    .append(new LiteralText(value.toString()))
+                                    .append(")\n"));
+                            });
+
+                            ctx.getSource().sendFeedback(finalText, false);
+
                             return 0;
-                        })
-                )
-                .then(CommandManager.literal("player")
-                        .then(CommandManager.argument("target_player", EntityArgumentType.player())
-                                .then(CommandManager.literal("info")
-                                        .requires(Permissions.require("commandlimits.player.info", 2))
-                                        .executes(ctx -> {
-                                            var targetPlayer = EntityArgumentType.getPlayer(ctx, "target_player");
+                        }))
+                    .then(CommandManager.literal("addExecutions")
+                        .requires(Permissions.require("commandlimits.player.modifyExecutionsCount", 2))
+                        .then(CommandManager.argument("command", StringArgumentType.string())
+                            .suggests((ctx, builder) -> {
+                                commandNames.forEach(builder::suggest);
+                                return builder.buildFuture();
+                            })
+                            .then(CommandManager.argument("count", IntegerArgumentType.integer())
+                                .executes(ctx -> {
+                                    var targetPlayer = EntityArgumentType.getPlayer(ctx, "target_player");
+                                    var specifiedCommand = StringArgumentType.getString(ctx, "command");
+                                    var count = IntegerArgumentType.getInteger(ctx, "count");
 
-                                            var titleBase = Text.of("Command Limits info for ");
-                                            var targetPlayerName = targetPlayer.getDisplayName();
+                                    var playerData = getPlayerData(targetPlayer);
+                                    int currentExecutions = playerData.getCommandExecutions(specifiedCommand);
+                                    playerData.setCommandExecutions(specifiedCommand, currentExecutions + count);
 
-                                            var playerData = getPlayerData(targetPlayer);
-
-                                            var titleText = new LiteralText("")
-                                                    .append(titleBase)
-                                                    .append(targetPlayerName)
-                                                    .append("\n");
-
-                                            var finalText = new LiteralText("")
-                                                    .append(titleText);
-
-                                            playerData.getCommandExecutionsMap().forEach((key, value) -> {
-                                                finalText.append(new LiteralText("")
-                                                        .append(new LiteralText(key))
-                                                        .append(new LiteralText(": "))
-                                                        .append(new LiteralText("(Execution Count: "))
-                                                        .append(new LiteralText(value.toString()))
-                                                        .append(")\n"));
-                                            });
-
-                                            ctx.getSource().sendFeedback(finalText, false);
-
-                                            return 0;
-                                        }))
-                                .then(CommandManager.literal("addExecutions")
-                                        .requires(Permissions.require("commandlimits.player.modifyExecutionsCount", 2))
-                                        .then(CommandManager.argument("command", StringArgumentType.string())
-                                                .suggests((ctx, builder) -> {
-                                                    commandNames.forEach(builder::suggest);
-                                                    return builder.buildFuture();
-                                                })
-                                                .then(CommandManager.argument("count", IntegerArgumentType.integer())
-                                                        .executes(ctx -> {
-                                                            var targetPlayer = EntityArgumentType.getPlayer(ctx, "target_player");
-                                                            var specifiedCommand = StringArgumentType.getString(ctx, "command");
-                                                            var count = IntegerArgumentType.getInteger(ctx, "count");
-
-                                                            var playerData = getPlayerData(targetPlayer);
-                                                            int currentExecutions = playerData.getCommandExecutions(specifiedCommand);
-                                                            playerData.setCommandExecutions(specifiedCommand, currentExecutions + count);
-
-                                                            return 0;
-                                                        }))
-                                        )
-                                )
+                                    return 0;
+                                }))
                         )
-                );
+                    )
+                )
+            );
 
         dispatcher.register(clBuilder);
     }
@@ -137,17 +137,17 @@ public class CommandsProvider {
     }
 
     public void reregisterCommands(
-            CommandDispatcher<ServerCommandSource> dispatcher) throws IOException {
+        CommandDispatcher<ServerCommandSource> dispatcher) throws IOException {
 
         // playerdata
         Gson gson2 = new GsonBuilder()
-                .setPrettyPrinting()
-                .create();
+            .setPrettyPrinting()
+            .create();
 
         var playersDataSerializer = new PlayersDataModelSerializer();
         var playersData = playersDataFile.exists() && playersDataFile.isFile() && playersDataFile.length() >= 2
-                ? playersDataSerializer.fromJson(JsonParser.parseReader(new JsonReader(new FileReader(playersDataFile))).getAsJsonObject())
-                : new PlayersDataModel();
+            ? playersDataSerializer.fromJson(JsonParser.parseReader(new JsonReader(new FileReader(playersDataFile))).getAsJsonObject())
+            : new PlayersDataModel();
 //        var players = playersData.getPlayers();
 //        commandNames.forEach(cmdName -> players.putIfAbsent(cmdName, new CommandLimitsModel(-1)));
 
@@ -186,8 +186,8 @@ public class CommandsProvider {
 
     private static Set<String> getCommandNames(CommandDispatcher<ServerCommandSource> dispatcher) {
         return dispatcher.getRoot().getChildren().stream()
-                .map(CommandNode::getName)
-                .collect(Collectors.toCollection(TreeSet::new));
+            .map(CommandNode::getName)
+            .collect(Collectors.toCollection(TreeSet::new));
     }
 
     public void loadOrInitConfig(CommandDispatcher<ServerCommandSource> dispatcher) throws IOException {
@@ -197,11 +197,11 @@ public class CommandsProvider {
         var configSerializer = new ConfigSerializer();
 
         Gson gson = new GsonBuilder()
-                .setPrettyPrinting()
-                .create();
+            .setPrettyPrinting()
+            .create();
         var baseConfig = configFile.exists() && configFile.isFile() && configFile.length() >= 2
-                ? configSerializer.fromJson(JsonParser.parseReader(new JsonReader(new FileReader(configFile))).getAsJsonObject())
-                : new CommandLimitsConfig();
+            ? configSerializer.fromJson(JsonParser.parseReader(new JsonReader(new FileReader(configFile))).getAsJsonObject())
+            : new CommandLimitsConfig();
         var commandsConfigValues = baseConfig.getCommands();
         commandNames.forEach(cmdName -> commandsConfigValues.putIfAbsent(cmdName, new CommandLimitsModel(-1)));
 
@@ -219,9 +219,9 @@ public class CommandsProvider {
     }
 
     private Predicate<ServerCommandSource> createMaxExecutionsPredicate(
-            String rootCommandName,
-            CommandNode<ServerCommandSource> commandNode,
-            CommandLimitsModel commandConfig) {
+        String rootCommandName,
+        CommandNode<ServerCommandSource> commandNode,
+        CommandLimitsModel commandConfig) {
         var existingRequirement = commandNode.getRequirement();
         return serverCommandSource -> {
             if (!existingRequirement.test(serverCommandSource)) {
@@ -251,9 +251,9 @@ public class CommandsProvider {
     }
 
     private void processCommandNode(
-            String rootCommandName,
-            CommandNode<ServerCommandSource> existingNode,
-            CommandLimitsModel commandConfig) {
+        String rootCommandName,
+        CommandNode<ServerCommandSource> existingNode,
+        CommandLimitsModel commandConfig) {
         try {
             commandNodeRequirementField.set(existingNode, createMaxExecutionsPredicate(rootCommandName, existingNode, commandConfig));
             if (existingNode.getCommand() != null) {

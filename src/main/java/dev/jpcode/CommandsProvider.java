@@ -40,7 +40,7 @@ public class CommandsProvider {
     public void registerCommandLimitsCommands(
         CommandDispatcher<ServerCommandSource> dispatcher) {
 
-        var commandNames = getCommandNames(dispatcher);
+        var limitedCommandNames = CONFIG.getLimitedCommands().map(Map.Entry::getKey).toList();
 
         var rootCommandName = CONFIG.getRootCommandName();
 
@@ -94,7 +94,7 @@ public class CommandsProvider {
                         .requires(Permissions.require("commandlimits.player.modifyExecutionsCount", 2))
                         .then(CommandManager.argument("command", StringArgumentType.string())
                             .suggests((ctx, builder) -> {
-                                commandNames.forEach(builder::suggest);
+                                limitedCommandNames.forEach(builder::suggest);
                                 return builder.buildFuture();
                             })
                             .then(CommandManager.argument("count", IntegerArgumentType.integer())

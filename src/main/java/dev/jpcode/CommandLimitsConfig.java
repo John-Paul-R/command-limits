@@ -3,7 +3,9 @@ package dev.jpcode;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Stream;
 
 public class CommandLimitsConfig {
 
@@ -19,6 +21,10 @@ public class CommandLimitsConfig {
 
     public void setCommands(HashMap<String, CommandLimitsModel> commands) {
         this.commands = commands;
+    }
+
+    public Stream<Map.Entry<String, CommandLimitsModel>> getLimitedCommands() {
+        return commands.entrySet().stream().filter(entry -> entry.getValue().getMaxExecutions() >= 0);
     }
 
     public void setCommandExecutionLimit(String commandName, int maxExecutions) {

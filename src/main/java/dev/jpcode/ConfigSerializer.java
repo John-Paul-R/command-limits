@@ -6,6 +6,8 @@ import java.util.HashMap;
 
 public class ConfigSerializer {
     public void toJson(JsonObject json, CommandLimitsConfig object) {
+        json.addProperty("rootCommandName", object.getRootCommandName());
+
         var commandsObj = new JsonObject();
         object.getCommands().forEach((key, value) -> {
             var obj = new JsonObject();
@@ -19,6 +21,11 @@ public class ConfigSerializer {
 
     public CommandLimitsConfig fromJson(JsonObject json) {
         var config = new CommandLimitsConfig();
+
+        var rootCommandElem = json.get("rootCommandName");
+        config.setRootCommandName(rootCommandElem == null || rootCommandElem.isJsonNull()
+                ? null
+                : rootCommandElem.getAsString());
 
         var commands = new HashMap<String, CommandLimitsModel>();
         json.getAsJsonObject("commands")

@@ -21,12 +21,15 @@ import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.LiteralText;
 import net.minecraft.text.Text;
+import org.apache.logging.log4j.core.lookup.StrSubstitutor;
 
 import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.lang.reflect.Field;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.function.Predicate;
@@ -197,6 +200,7 @@ public class CommandsProvider {
 
         Gson gson = new GsonBuilder()
             .setPrettyPrinting()
+            .serializeNulls()
             .create();
         var baseConfig = configFile.exists() && configFile.isFile() && configFile.length() >= 2
             ? configSerializer.fromJson(JsonParser.parseReader(new JsonReader(new FileReader(configFile))).getAsJsonObject())
@@ -244,11 +248,31 @@ public class CommandsProvider {
         };
     }
 
-    private Command<ServerCommandSource> createWrappedCommand(String rootCommandName, CommandNode<ServerCommandSource> commandNode) {
+    private Command<ServerCommandSource> createWrappedCommand(
+        String rootCommandName,
+        CommandNode<ServerCommandSource> commandNode,
+        CommandLimitsModel commandConfig)
+    {
         var baseCommand = commandNode.getCommand();
         return (CommandContext<ServerCommandSource> ctx) -> {
             if (ctx.getSource() != null) {
-                getPlayerData(ctx.getSource()).incrementExecutions(rootCommandName);
+                var executorPlayer = ctx.getSource().getPlayer();
+                var playerData = getPlayerData(executorPlayer);
+                var feedbackTemplate = CONFIG.getCommandLimitFeedbackTemplate();
+                if (feedbackTemplate.isPresent()) {
+                    int currentExecutions = playerData.getCommandExecutions(rootCommandName) + 1; // +1 to account for _this_ execution
+                    int maxExecutions = commandConfig.getMaxExecutions();
+                    int remainingExecutions = maxExecutions - currentExecutions;
+                    Map<String, String> substitutions = new HashMap<>();
+                    substitutions.put("commandName", rootCommandName);
+                    substitutions.put("remainingExecutions", Integer.toString(remainingExecutions));
+                    substitutions.put("currentExecutions", Integer.toString(currentExecutions));
+                    substitutions.put("maxExecutions", Integer.toString(maxExecutions));
+
+                    var messageString = new StrSubstitutor(substitutions).replace(feedbackTemplate.get());
+                    ctx.getSource().sendFeedback(Text.of(messageString), false);
+                }
+                playerData.incrementExecutions(rootCommandName);
             }
             return baseCommand.run(ctx);
         };
@@ -265,7 +289,7 @@ public class CommandsProvider {
         try {
             commandNodeRequirementField.set(existingNode, createMaxExecutionsPredicate(rootCommandName, existingNode, commandConfig));
             if (existingNode.getCommand() != null) {
-                commandNodeCommandField.set(existingNode, createWrappedCommand(rootCommandName, existingNode));
+                commandNodeCommandField.set(existingNode, createWrappedCommand(rootCommandName, existingNode, commandConfig));
             }
         } catch (IllegalAccessException e) {
             throw new RuntimeException(e);

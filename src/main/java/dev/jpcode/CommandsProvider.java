@@ -13,14 +13,11 @@ import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.tree.CommandNode;
 import me.lucko.fabric.api.permissions.v0.Permissions;
-import com.mojang.brigadier.tree.LiteralCommandNode;
 import net.fabricmc.loader.api.FabricLoader;
-import net.minecraft.command.CommandRegistryAccess;
 import net.minecraft.command.argument.EntityArgumentType;
 import net.minecraft.server.command.CommandManager;
 import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.text.LiteralText;
 import net.minecraft.text.Text;
 import org.apache.logging.log4j.core.lookup.StrSubstitutor;
 
@@ -69,20 +66,20 @@ public class CommandsProvider {
 
                             var playerData = getPlayerData(targetPlayer);
 
-                            var titleText = new LiteralText("")
+                            var titleText = Text.literal("")
                                 .append(titleBase)
                                 .append(targetPlayerName)
                                 .append("\n");
 
-                            var finalText = new LiteralText("")
+                            var finalText = Text.literal("")
                                 .append(titleText);
 
                             playerData.getCommandExecutionsMap().forEach((key, value) -> {
-                                finalText.append(new LiteralText("")
-                                    .append(new LiteralText(key))
-                                    .append(new LiteralText(": "))
-                                    .append(new LiteralText("(Execution Count: "))
-                                    .append(new LiteralText(value.toString()))
+                                finalText.append(Text.literal("")
+                                    .append(Text.literal(key))
+                                    .append(Text.literal(": "))
+                                    .append(Text.literal("(Execution Count: "))
+                                    .append(Text.literal(value.toString()))
                                     .append(")\n"));
                             });
 
@@ -126,8 +123,8 @@ public class CommandsProvider {
     private Field commandNodeCommandField;
     private Field commandNodeRequirementField;
 
-    private static CommandLimitsPlayerModel getPlayerData(ServerCommandSource serverCommandSource) {
-        var playerUuid = serverCommandSource.getPlayer().getUuid();
+    private static CommandLimitsPlayerModel getPlayerData(ServerPlayerEntity player) {
+        var playerUuid = player.getUuid();
         var data = PLAYERS_DATA.getPlayers().get(playerUuid);
         if (data == null) {
             PLAYERS_DATA.getPlayers().put(playerUuid, data = new CommandLimitsPlayerModel());

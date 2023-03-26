@@ -48,6 +48,7 @@ public class CommandsProvider {
                 .executes(ctx -> {
                     try {
                         loadOrInitConfig(dispatcher);
+                        reregisterCommands(dispatcher);
                     } catch (IOException e) {
                         throw new RuntimeException(e);
                     }
@@ -139,28 +140,9 @@ public class CommandsProvider {
     public void reregisterCommands(
         CommandDispatcher<ServerCommandSource> dispatcher) throws IOException {
 
-        // playerdata
-        Gson gson2 = new GsonBuilder()
-            .setPrettyPrinting()
-            .create();
-
-        var playersDataSerializer = new PlayersDataModelSerializer();
-        var playersData = playersDataFile.exists() && playersDataFile.isFile() && playersDataFile.length() >= 2
-            ? playersDataSerializer.fromJson(JsonParser.parseReader(new JsonReader(new FileReader(playersDataFile))).getAsJsonObject())
-            : new PlayersDataModel();
-//        var players = playersData.getPlayers();
-//        commandNames.forEach(cmdName -> players.putIfAbsent(cmdName, new CommandLimitsModel(-1)));
-
-//        playersData.setCommands(players);
-
-        var outPlayersJsonObject = new JsonObject();
-        playersDataSerializer.toJson(outPlayersJsonObject, playersData);
-        var playersFileWriter = new FileWriter(playersDataFile);
-        gson2.toJson(outPlayersJsonObject, new JsonWriter(playersFileWriter));
-        playersFileWriter.flush();
-        playersFileWriter.close();
-
-        PLAYERS_DATA = playersData;
+        if (PLAYERS_DATA == null) {
+            loadOrInitPlayerData();
+        }
 
         // --- hook the modified commands
 
@@ -182,6 +164,27 @@ public class CommandsProvider {
 
             processCommandNode(command, commandConfig);
         });
+    }
+
+    private static void loadOrInitPlayerData() throws IOException {
+        // playerdata
+        Gson gson2 = new GsonBuilder()
+            .setPrettyPrinting()
+            .create();
+
+        var playersDataSerializer = new PlayersDataModelSerializer();
+        var playersData = playersDataFile.exists() && playersDataFile.isFile() && playersDataFile.length() >= 2
+            ? playersDataSerializer.fromJson(JsonParser.parseReader(new JsonReader(new FileReader(playersDataFile))).getAsJsonObject())
+            : new PlayersDataModel();
+
+        var outPlayersJsonObject = new JsonObject();
+        playersDataSerializer.toJson(outPlayersJsonObject, playersData);
+        var playersFileWriter = new FileWriter(playersDataFile);
+        gson2.toJson(outPlayersJsonObject, new JsonWriter(playersFileWriter));
+        playersFileWriter.flush();
+        playersFileWriter.close();
+
+        PLAYERS_DATA = playersData;
     }
 
     private static Set<String> getCommandNames(CommandDispatcher<ServerCommandSource> dispatcher) {

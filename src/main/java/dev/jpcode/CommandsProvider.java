@@ -68,7 +68,7 @@ public class CommandsProvider {
         configSerializer.toJson(outJsonObject, baseConfig);
         var configFileWriter = new FileWriter(configFile);
 
-        gson.toJson(outJsonObject, new JsonWriter(configFileWriter));
+        gson.toJson(outJsonObject, configFileWriter);
         configFileWriter.flush();
         configFileWriter.close();
 

@@ -155,11 +155,9 @@ public class CommandsProvider {
             e.printStackTrace();
         }
 
-        CONFIG.getCommands().forEach((commandName, commandConfig) -> {
-            if (commandConfig.getMaxExecutions() < 0) {
-                return;
-            }
-
+        CONFIG.getLimitedCommands().forEach((commandEntry) -> {
+            var commandName = commandEntry.getKey();
+            var commandConfig = commandEntry.getValue();
             var command = dispatcher.getRoot().getChild(commandName);
 
             processCommandNode(command, commandConfig);
@@ -222,11 +220,19 @@ public class CommandsProvider {
         CONFIG = baseConfig;
     }
 
+    private Map<String, Predicate<ServerCommandSource>> originalCommandRequires = new HashMap<>();
+    private Map<String, Command<ServerCommandSource>> originalCommands = new HashMap<>();
+
     private Predicate<ServerCommandSource> createMaxExecutionsPredicate(
         String rootCommandName,
         CommandNode<ServerCommandSource> commandNode,
-        CommandLimitsModel commandConfig) {
-        var existingRequirement = commandNode.getRequirement();
+        CommandLimitsModel commandConfig)
+    {
+        // Note, this _can_ conflict, if the command has 2 arguments with the same name... Assuming that won't happen for now.
+        var key = rootCommandName + commandNode.getName();
+        originalCommandRequires.putIfAbsent(key, commandNode.getRequirement());
+        var existingRequirement = originalCommandRequires.get(key);
+
         return serverCommandSource -> {
             if (!existingRequirement.test(serverCommandSource)) {
                 return false;
@@ -245,7 +251,11 @@ public class CommandsProvider {
         CommandNode<ServerCommandSource> commandNode,
         CommandLimitsModel commandConfig)
     {
-        var baseCommand = commandNode.getCommand();
+        // Note, this _can_ conflict, if the command has 2 arguments with the same name... Assuming that won't happen for now.
+        var key = rootCommandName + commandNode.getName();
+        originalCommands.putIfAbsent(key, commandNode.getCommand());
+        var baseCommand = originalCommands.get(key);
+
         return (CommandContext<ServerCommandSource> ctx) -> {
             if (ctx.getSource().isExecutedByPlayer()) {
                 var executorPlayer = ctx.getSource().getPlayer();

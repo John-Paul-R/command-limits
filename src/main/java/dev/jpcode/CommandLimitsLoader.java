@@ -18,12 +18,15 @@ public class CommandLimitsLoader {
         CommandRegistrationCallback.EVENT.register(
                 COMMAND_REGISTRATION_PHASE_ID,
                 (dispatcher, ign) -> {
+                    try {
+                        commandsProvider.loadOrInitConfig(dispatcher);
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
                     commandsProvider.registerCommandLimitsCommands(dispatcher);
 //                    this.commandsProvider.loadCommandAliases();
                     try {
                         commandsProvider.reregisterCommands(dispatcher);
-                    } catch (FileNotFoundException e) {
-                        throw new RuntimeException(e);
                     } catch (IOException e) {
                         throw new RuntimeException(e);
                     }
